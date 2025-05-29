@@ -1,0 +1,2 @@
+- `uv run python src/quicknode/quicknode.py`
+- `uv run python src/birdeye/birdeye.py`

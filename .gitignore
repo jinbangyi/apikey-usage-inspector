@@ -172,3 +172,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+debug.md
+debug
+birdeye_login_response.txt
