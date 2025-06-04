@@ -1,18 +1,11 @@
+import asyncio
 from typing import Optional
-import requests
-from pydantic import BaseModel
-from pydantic_settings import BaseSettings
+
 from loguru import logger
+from pydantic import BaseModel
 
-class Settings(BaseSettings):
-    quicknode_console_apikey: str = "YOUR_QUICKNODE_API_KEY"  # Default value, can be overridden by .env file
-
-    class Config:
-        env_file = ".env"  # Specify the .env file to load environment variables from
-
-settings = Settings()
-if settings.quicknode_console_apikey == "YOUR_QUICKNODE_API_KEY":
-    logger.error("QuickNode API key is not set. Please set it in the .env file or directly in the code.")
+from src.settings import Metrics, settings
+from src.utils.requests_async import async_get
 
 """
 https://www.quicknode.com/docs/console-api/usage/v0-usage-rpc
@@ -41,6 +34,8 @@ error
     string
     A string containing an error message, if any issues occur during the request
 """
+
+
 class QuickNodeResponse(BaseModel):
     credits_used: int
     credits_remaining: int
@@ -50,34 +45,42 @@ class QuickNodeResponse(BaseModel):
     end_time: int
 
 
-def start():
+async def start() -> Metrics:
     # Replace with your actual QuickNode URL
     quicknode_url = "https://api.quicknode.com/v0/usage/rpc"
     # read from .env file
     # Ensure you have the QuickNode API key set in your environment or .env file
-    quicknode_console_apikey = settings.quicknode_console_apikey
+    quicknode_console_apikey = settings.quickNodeSettings.quicknode_console_apikey
 
     # Example request to get the latest block number
-    response = requests.get(
+    response = await async_get(
         quicknode_url,
         params={
-            'start_time': '',
-            'end_time': '',
+            "start_time": "",
+            "end_time": "",
         },
         headers={
-            'x-api-key': quicknode_console_apikey,
-            'accept': 'application/json',
-        }
+            "x-api-key": quicknode_console_apikey,
+            "accept": "application/json",
+        },
     )
 
-    if response.status_code == 200:
+    if response.status == 200:
         # Parse the response JSON into a Pydantic model
-        data = QuickNodeResponse(**response.json().get('data', {}))
-        return data
+        response_json = await response.json()
+        data = QuickNodeResponse(**response_json.get("data", {}))
+        logger.debug(f"QuickNode data: {data}")
+        return Metrics(
+            usage=data.credits_used,
+            limit=data.limit,
+            provider="quicknode",
+        )
     else:
-        logger.error(f"Error: {response.status_code} - {response.text}")
-        return None
+        text = await response.text()
+        logger.error(f"Error: {response.status} - {text}")
+        raise Exception(f"Failed to fetch QuickNode data: {response.status} - {text}")
 
 
 if __name__ == "__main__":
-    logger.debug(start())
+    result = asyncio.run(start())
+    logger.debug(result)

@@ -1,2 +1,12 @@
-- `uv run python src/quicknode/quicknode.py`
-- `uv run python src/birdeye/birdeye.py`
+- `uv run python main.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/quicknode/quicknode.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/birdeye/birdeye.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/cmc/cmc.py`
+- [ ] openai
+- [ ] ANTHROPIC
+- [ ] PUMPSCAM
+- [ ] ALVA
+- [ ] TWITTER_CONSUMER
+- [ ] SERP
+- [ ] BIRDEYE
+- [ ] PUMP_NEWS
