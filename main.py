@@ -54,10 +54,21 @@ async def generate_metrics():
         logger.info("📊 Fetching metrics from both Birdeye and QuickNode APIs...")
 
         # Use asyncio.gather to run both API calls concurrently
-        tasks = await asyncio.gather(
-            birdeye_start(), quicknode_start(),
-            return_exceptions=True
-        )
+        pre_tasks = [
+            {
+                "function": birdeye_start,
+                "enabled": settings.birdeyeSettings.birdeye_enabled,
+            },
+            {
+                "function": quicknode_start,
+                "enabled": settings.quickNodeSettings.quicknode_enabled,
+            }
+        ]
+        tasks = [
+            task["function"]() for task in pre_tasks if task["enabled"]
+        ]
+        tasks = await asyncio.gather(*tasks, return_exceptions=True)
+        logger.info("📊 Metrics fetched successfully from APIs")
 
         for task in tasks:
             if isinstance(task, BaseException):
