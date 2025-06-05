@@ -1,0 +1,63 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on version tags like v1.0.0, v2.1.3, etc.
+
+env:
+  REGISTRY: docker.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Extract tag version
+      id: extract_tag
+      run: |
+        # Remove 'v' prefix from tag if present (e.g., v1.0.0 -> 1.0.0)
+        TAG=${GITHUB_REF#refs/tags/}
+        VERSION=${TAG#v}
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Tag: $TAG"
+        echo "Version: $VERSION"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to DockerHub
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      env:
+        DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      run: |
+        uv run python -m scripts.build \
+          --push \
+          --tag ${{ steps.extract_tag.outputs.version }} \
+          --tag-latest \
+          --platform linux/amd64,linux/arm64
+
+    - name: Image digest
+      run: echo "Image pushed successfully with tag ${{ steps.extract_tag.outputs.version }}"

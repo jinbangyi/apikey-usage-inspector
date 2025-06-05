@@ -2,4 +2,5 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    quicknode_console_apikey: str = "YOUR_QUICKNODE_API_KEY"
+    cmc_email: str = "YOUR_EMAIL"
+    cmc_password: str = "YOUR_PASSWORD"

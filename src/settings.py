@@ -1,8 +1,10 @@
 from typing import Optional
+
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.birdeye import Settings as BirdeyeSettings
+from src.cmc import Settings as CMCSettings
 from src.quicknode import Settings as QuickNodeSettings
 
 
@@ -30,10 +32,12 @@ class Settings(BaseSettings):
 
     birdeyeSettings: BirdeyeSettings = BirdeyeSettings()
     quickNodeSettings: QuickNodeSettings = QuickNodeSettings()
+    cmcSettings: CMCSettings = CMCSettings()
 
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=".env",
     )
+
 
 settings = Settings()
