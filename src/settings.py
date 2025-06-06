@@ -14,7 +14,7 @@ class Metrics(BaseModel):
     provider: str
 
 
-class Settings(BaseSettings):
+class CommonSettings(BaseSettings):
     # using original ip to bypass cloudflare
     dns_map: dict = {
         "multichain-api.birdeye.so": "37.59.30.17",
@@ -40,4 +40,4 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings()
+settings = CommonSettings()

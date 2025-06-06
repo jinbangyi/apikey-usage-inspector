@@ -18,11 +18,11 @@ class Plan(BaseModel):
     monthlyUnits: int
     name: str
     price: int
-    pricePerUnit: Optional[float]
-    stripeUsagePriceId: Optional[str]
-    monthlyWsUnits: Optional[int]
-    pricePerWsUnit: Optional[float]
-    stripeApiUsagePriceId: Optional[str]
+    pricePerUnit: Optional[float] = None
+    stripeUsagePriceId: Optional[str] = None
+    monthlyWsUnits: Optional[int] = None
+    pricePerWsUnit: Optional[float] = None
+    stripeApiUsagePriceId: Optional[str] = None
     isUsageCombined: bool
     id: str
 

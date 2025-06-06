@@ -11,12 +11,9 @@ import sys
 from pathlib import Path
 from typing import Optional, Tuple
 
-try:
-    from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-    load_dotenv()  # Load .env file if python-dotenv is available
-except ImportError:
-    pass  # python-dotenv not installed, continue without it
+load_dotenv()  # Load .env file if python-dotenv is available
 
 
 def run_command(

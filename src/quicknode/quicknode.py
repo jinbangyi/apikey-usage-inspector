@@ -40,7 +40,7 @@ class QuickNodeResponse(BaseModel):
     credits_used: int
     credits_remaining: int
     limit: int
-    overages: Optional[int]
+    overages: Optional[int] = None
     start_time: int
     end_time: int
 
