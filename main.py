@@ -6,31 +6,37 @@ from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 from src.birdeye.birdeye import start as birdeye_start
 from src.cmc.cmc import start as cmc_start
 from src.quicknode.quicknode import start as quicknode_start
-from src.settings import settings
+from src.twitterapi.twitterapi import start as get_twitterapi_metrics
+from src.settings import Metrics, settings
 
 registry = CollectorRegistry()
 
-_default_description = """
-provider: birdeye, cmc, quicknode, etc.
-name: there exists multi apikeys in one provider
-category: diff provider may have different usage calculation
-"""
-cron_apikey_usage = Gauge(
-    "cron_apikey_usage",
-    "provider apikey usage" + _default_description,
-    ["provider", "name", "category"],
+# API key usage metrics
+apikey_requests_used_total = Gauge(
+    "apikey_requests_used_total",
+    "Total number of API requests used for the given API key",
+    ["service", "key_type", "usage_calculation"],
     registry=registry,
 )
-cron_apikey_usage_percent = Gauge(
-    "cron_apikey_usage_percent",
-    "provider apikey usage percent" + _default_description,
-    ["provider", "name", "category"],
+
+apikey_requests_remaining_total = Gauge(
+    "apikey_requests_remaining_total",
+    "Total number of API requests remaining for the given API key",
+    ["service", "key_type", "usage_calculation"],
     registry=registry,
 )
-cron_apikey_limit = Gauge(
-    "cron_apikey_limit",
-    "provider apikey limit" + _default_description,
-    ["provider", "name", "category"],
+
+apikey_usage_ratio = Gauge(
+    "apikey_usage_ratio",
+    "Ratio of used requests to total limit (0.0 to 1.0)",
+    ["service", "key_type", "usage_calculation"],
+    registry=registry,
+)
+
+apikey_requests_limit_total = Gauge(
+    "apikey_requests_limit_total",
+    "Total number of API requests allowed for the given API key",
+    ["service", "key_type", "usage_calculation"],
     registry=registry,
 )
 
@@ -58,36 +64,73 @@ async def generate_metrics():
         pre_tasks = [
             {
                 "function": birdeye_start,
-                "enabled": settings.birdeyeSettings.birdeye_enabled,
+                "enabled": settings.birdeyeSettings.enabled,
             },
             {
                 "function": quicknode_start,
-                "enabled": settings.quickNodeSettings.quicknode_enabled,
+                "enabled": settings.quickNodeSettings.enabled,
             },
             {
                 "function": cmc_start,
-                "enabled": settings.cmcSettings.cmc_enabled,
+                "enabled": settings.cmcSettings.enabled,
             },
+            {
+                "function": get_twitterapi_metrics,
+                "enabled": settings.twitterAPISettings.enabled,
+            }
         ]
-        tasks = [task["function"]() for task in pre_tasks if task["enabled"]]
-        tasks = await asyncio.gather(*tasks, return_exceptions=True)
+        future_tasks = [task["function"]() for task in pre_tasks if task["enabled"]]
+        tasks: list[Metrics | list[Metrics] | BaseException] = await asyncio.gather(
+            *future_tasks, return_exceptions=True
+        )
         logger.info("📊 Metrics fetched successfully from APIs")
 
+        # Flatten the results - some providers return List[Metrics], others return Metrics
+        all_metrics: list[Metrics] = []
         for task in tasks:
             if isinstance(task, BaseException):
                 logger.error(f"❌ Error fetching data: {task}")
                 continue
-            logger.debug(f"✅ Successfully fetched data: {task}")
+            elif isinstance(task, list):
+                # Handle providers that return List[Metrics] (like TwitterAPI with multiple keys)
+                all_metrics.extend(task)
+                logger.debug(f"✅ Successfully fetched {len(task)} metric(s) from provider")
+            else:
+                # Handle providers that return single Metrics object
+                all_metrics.append(task)
+                logger.debug(f"✅ Successfully fetched data: {task}")
 
-            cron_apikey_usage.labels(
-                provider=task.provider, name="default", category="default"
-            ).set(task.usage)
-            cron_apikey_limit.labels(
-                provider=task.provider, name="default", category="default"
-            ).set(task.limit)
-            cron_apikey_usage_percent.labels(
-                provider=task.provider, name="default", category="default"
-            ).set(round(task.usage / task.limit, 2))
+        for metric in all_metrics:
+            if metric.provider == "quicknode":
+                usage_calc = "monthly_credits"  # Credits with monthly reset
+            elif metric.provider == "birdeye":
+                usage_calc = "monthly_credits"
+            elif metric.provider == "coinmarketcap":
+                usage_calc = "monthly_credits"
+            elif metric.provider == "twitterapi":
+                usage_calc = "long_period_package"  # Using a long period package
+            else:
+                usage_calc = "unknown"  # Fallback for unknown services
+
+            key_type = metric.key_masked if metric.key_masked else "primary"
+
+            if usage_calc == "monthly_credits":
+                apikey_requests_used_total.labels(
+                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                ).set(metric.usage)
+                apikey_requests_limit_total.labels(
+                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                ).set(metric.limit)
+                apikey_usage_ratio.labels(
+                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                ).set(round(metric.usage / metric.limit, 4))
+                apikey_requests_remaining_total.labels(
+                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                ).set(metric.limit - metric.usage)
+            elif usage_calc == "long_period_package":
+                apikey_requests_remaining_total.labels(
+                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                ).set(metric.limit - metric.usage)
 
     except Exception as e:
         logger.error(f"❌ Unexpected error during metrics generation: {e}")

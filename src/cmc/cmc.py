@@ -150,8 +150,8 @@ async def get_initial_captcha() -> CaptchaInitResponse:
 
     # Make initial login attempt without captcha to trigger captcha requirement
     login_data = {
-        "email": settings.cmcSettings.cmc_email,
-        "password": settings.cmcSettings.cmc_password,
+        "email": settings.cmcSettings.email,
+        "password": settings.cmcSettings.password,
         "deviceInfo": json.dumps(generate_device_info()),
         "fvideoId": get_fvideo_id(),
     }
@@ -515,7 +515,7 @@ async def start() -> Metrics:
     try:
         # Login to get session token
         session_token = await cmc_login(
-            settings.cmcSettings.cmc_email, settings.cmcSettings.cmc_password
+            settings.cmcSettings.email, settings.cmcSettings.password
         )
         logger.debug(f"CMC session token obtained: {session_token[:20]}...")
 

@@ -145,8 +145,8 @@ async def get_birdeye_monthly_max_usage(token: str) -> AccountInfoResponse:
 
 async def start() -> Metrics:
     token = await birdeye_login(
-        settings.birdeyeSettings.birdeye_email,
-        settings.birdeyeSettings.birdeye_password,
+        settings.birdeyeSettings.email,
+        settings.birdeyeSettings.password,
     )
     logger.debug(f"Birdeye token: {token}")
     monthly_usage = await get_birdeye_monthly_max_usage(token)

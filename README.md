@@ -2,6 +2,7 @@
 - `export PYTHONPATH=$(pwd) && uv run python src/quicknode/quicknode.py`
 - `export PYTHONPATH=$(pwd) && uv run python src/birdeye/birdeye.py`
 - `export PYTHONPATH=$(pwd) && uv run python src/cmc/cmc.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/twitterapi/twitterapi.py`
 - [ ] openai
 - [ ] ANTHROPIC
 - [ ] PUMPSCAM

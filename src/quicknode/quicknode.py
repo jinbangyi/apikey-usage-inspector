@@ -50,7 +50,7 @@ async def start() -> Metrics:
     quicknode_url = "https://api.quicknode.com/v0/usage/rpc"
     # read from .env file
     # Ensure you have the QuickNode API key set in your environment or .env file
-    quicknode_console_apikey = settings.quickNodeSettings.quicknode_console_apikey
+    quicknode_console_apikey = settings.quickNodeSettings.console_apikey
 
     # Example request to get the latest block number
     response = await async_get(

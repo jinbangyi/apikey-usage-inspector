@@ -6,12 +6,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from src.birdeye import Settings as BirdeyeSettings
 from src.cmc import Settings as CMCSettings
 from src.quicknode import Settings as QuickNodeSettings
+from src.twitterapi.oauth import Settings as TwitterAPIOauthSettings
+from src.twitterapi import Settings as TwitterAPISettings
 
 
 class Metrics(BaseModel):
     usage: int
     limit: int
     provider: str
+    key_masked: Optional[str] = None
+    extra: Optional[dict] = None
 
 
 class CommonSettings(BaseSettings):
@@ -33,6 +37,8 @@ class CommonSettings(BaseSettings):
     birdeyeSettings: BirdeyeSettings = BirdeyeSettings()
     quickNodeSettings: QuickNodeSettings = QuickNodeSettings()
     cmcSettings: CMCSettings = CMCSettings()
+    twitterAPISettings: TwitterAPISettings = TwitterAPISettings()
+    twitterAPIOauthSettings: TwitterAPIOauthSettings = TwitterAPIOauthSettings()
 
     model_config = SettingsConfigDict(
         extra="ignore",
