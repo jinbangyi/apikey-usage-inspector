@@ -56,8 +56,7 @@ jobs:
         uv run python -m scripts.build \
           --push \
           --tag ${{ steps.extract_tag.outputs.version }} \
-          --tag-latest \
-          --platform linux/amd64,linux/arm64
+          --tag-latest
 
     - name: Image digest
       run: echo "Image pushed successfully with tag ${{ steps.extract_tag.outputs.version }}"
