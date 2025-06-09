@@ -45,5 +45,5 @@ class Settings(BaseSettings):
     )
 
     model_config = SettingsConfigDict(
-        env_prefix="TWITTERAPI_", env_file=".env", extra="ignore"
+        env_prefix="TWITTERAPI_OAUTH_", env_file=".env", extra="ignore"
     )

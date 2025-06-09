@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=".env",
-        env_prefix="CMC_",
+        env_prefix="CMC_CAPTCHA_",
     )
 
     def __init__(self, **data):
