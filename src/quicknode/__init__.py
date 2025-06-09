@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    enabled: bool = True
+    enabled: bool = False
     console_apikey: str = "YOUR_API_KEY"
 
     model_config = SettingsConfigDict(

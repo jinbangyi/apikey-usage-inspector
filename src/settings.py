@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.birdeye import Settings as BirdeyeSettings
 from src.cmc import Settings as CMCSettings
+from src.cmc.captcha import Settings as CMCCaptchaSettings
 from src.quicknode import Settings as QuickNodeSettings
 from src.twitterapi.oauth import Settings as TwitterAPIOauthSettings
 from src.twitterapi import Settings as TwitterAPISettings
@@ -37,6 +38,7 @@ class CommonSettings(BaseSettings):
     birdeyeSettings: BirdeyeSettings = BirdeyeSettings()
     quickNodeSettings: QuickNodeSettings = QuickNodeSettings()
     cmcSettings: CMCSettings = CMCSettings()
+    cmcCaptchaSettings: CMCCaptchaSettings = CMCCaptchaSettings()
     twitterAPISettings: TwitterAPISettings = TwitterAPISettings()
     twitterAPIOauthSettings: TwitterAPIOauthSettings = TwitterAPIOauthSettings()
 
