@@ -1,9 +1,10 @@
 from typing import List, Optional
 
 from loguru import logger
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.settings import Metrics, settings
+from src.utils.apikey import ApiKeyMetrics, MultiApiKeyProcessor
 from src.utils.requests_async import async_get
 
 
@@ -20,21 +21,9 @@ class TwitterAPIErrorResponse(BaseModel):
     message: Optional[str] = None
 
 
-class APIKeyMetrics(BaseModel):
-    """Model for individual API key metrics"""
-
-    api_key: str
-    api_key_masked: str
-    usage_response: Optional[TwitterAPIUsageResponse] = None
-    error: Optional[str] = None
-
-
 async def get_twitterapi_usage(api_key: str) -> TwitterAPIUsageResponse:
     """Get TwitterAPI usage information using the API key"""
     url = "https://api.twitterapi.io/oapi/my/info"
-
-    # Mask the API key for logging (show first 8 and last 4 characters)
-    masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
 
     headers = {
         "X-API-Key": api_key,
@@ -42,133 +31,68 @@ async def get_twitterapi_usage(api_key: str) -> TwitterAPIUsageResponse:
         "User-Agent": "apikey-usage-inspector/1.0",
     }
 
-    logger.info(f"🐦 Getting TwitterAPI usage information for key: {masked_key}...")
+    response = await async_get(url, headers=headers)
+
+    if response.status == 200:
+        data = await response.json()
+        return TwitterAPIUsageResponse(**data)
+    else:
+        error_text = await response.text()
+        raise Exception(f"TwitterAPI request failed: {response.status} - {error_text}")
+
+
+async def get_single_api_key_metrics(api_key: str) -> ApiKeyMetrics:
+    """Get metrics for a single TwitterAPI key"""
+    key_id = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
 
     try:
-        response = await async_get(url, headers=headers)
+        # Get TwitterAPI usage information
+        usage_response = await get_twitterapi_usage(api_key)
 
-        if response.status == 200:
-            data = await response.json()
-            logger.success(
-                f"✅ TwitterAPI usage retrieved for {masked_key}: {data.get('recharge_credits', 0)} credits"
-            )
-            return TwitterAPIUsageResponse(**data)
-        else:
-            error_text = await response.text()
-            logger.error(
-                f"❌ TwitterAPI request failed for {masked_key}: {response.status} - {error_text}"
-            )
-            raise Exception(
-                f"TwitterAPI request failed: {response.status} - {error_text}"
-            )
+        remaining_credits = usage_response.recharge_credits
+        logger.info(f"TwitterAPI key {key_id}: {remaining_credits} remaining credits")
+
+        return ApiKeyMetrics(
+            key_id=key_id,
+            usage=0,  # TwitterAPI doesn't provide explicit usage info
+            limit=remaining_credits,  # Using remaining credits as the limit
+            success=True,
+            extra={
+                "recharge_credits": remaining_credits,
+                "api_endpoint": "oapi/my/info",
+                "status": "active",
+            },
+        )
 
     except Exception as e:
-        logger.error(f"❌ Error getting TwitterAPI usage for {masked_key}: {str(e)}")
-        raise
-
-
-async def get_usage_for_all_keys() -> List[APIKeyMetrics]:
-    """Get usage information for all configured API keys"""
-    api_keys = settings.twitterAPISettings.api_keys
-    logger.info(f"🐦 Processing {len(api_keys)} TwitterAPI key(s)...")
-
-    results = []
-
-    for api_key in api_keys:
-        masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***"
-
-        try:
-            usage_response = await get_twitterapi_usage(api_key)
-            results.append(
-                APIKeyMetrics(
-                    api_key=api_key,
-                    api_key_masked=masked_key,
-                    usage_response=usage_response,
-                )
-            )
-        except Exception as e:
-            logger.error(f"❌ Failed to get usage for key {masked_key}: {str(e)}")
-            results.append(
-                APIKeyMetrics(api_key=api_key, api_key_masked=masked_key, error=str(e))
-            )
-
-    return results
+        logger.error(f"Error getting metrics for TwitterAPI key {key_id}: {e}")
+        raise e
+        # return ApiKeyMetrics(
+        #     key_id=key_id,
+        #     usage=0,
+        #     limit=0,
+        #     success=False,
+        #     error=str(e),
+        # )
 
 
 async def start() -> List[Metrics]:
-    """Main entry point for TwitterAPI usage collection - returns metrics for all keys"""
-    if not settings.twitterAPISettings.enabled:
-        logger.info("🐦 TwitterAPI monitoring is disabled")
-        return [
-            Metrics(
-                usage=0,
-                limit=0,
-                provider="twitterapi",
-                extra={"status": "disabled", "key_id": "disabled"},
-            )
-        ]
-
     try:
-        # Get usage for all configured API keys
-        all_key_metrics = await get_usage_for_all_keys()
+        # Get API keys from settings
+        api_keys = settings.twitterAPISettings.api_keys
 
-        metrics_list = []
+        if not api_keys:
+            raise Exception("No valid API keys configured for TwitterAPI")
 
-        for i, key_metrics in enumerate(all_key_metrics):
-            if key_metrics.error:
-                # Handle error case
-                logger.error(
-                    f"❌ Error for key {key_metrics.api_key_masked}: {key_metrics.error}"
-                )
-            else:
-                # Handle successful case
-                if key_metrics.usage_response:
-                    remaining_credits = key_metrics.usage_response.recharge_credits
-                    logger.info(
-                        f"📊 TwitterAPI Metrics for {key_metrics.api_key_masked} - Remaining Credits: {remaining_credits}"
-                    )
+        # Create processor instance
+        processor = MultiApiKeyProcessor("twitterapi", get_single_api_key_metrics)
 
-                    metrics_list.append(
-                        Metrics(
-                            usage=0,  # We don't have explicit usage info from the API
-                            limit=remaining_credits,  # Using remaining credits as the limit
-                            provider="twitterapi",
-                            key_masked=key_metrics.api_key_masked,
-                            extra={
-                                "recharge_credits": remaining_credits,
-                                "status": "active",
-                                "key_id": f"key_{i + 1}",
-                            },
-                        )
-                    )
-                else:
-                    # This shouldn't happen if there's no error, but handle it gracefully
-                    logger.warning(
-                        f"⚠️  No usage response for key {key_metrics.api_key_masked}"
-                    )
-
-        logger.info(f"📊 Successfully processed {len(metrics_list)} TwitterAPI key(s)")
-        return metrics_list
+        # Process all API keys and return metrics
+        return await processor.process_multiple_keys(api_keys)
 
     except Exception as e:
-        logger.warning(f"❌ Failed to get TwitterAPI metrics: {str(e)}")
-        raise e
-
-
-# Backward compatibility function for single key usage
-async def start_single() -> Metrics:
-    """Backward compatibility function that returns only the first key's metrics"""
-    metrics_list = await start()
-    return (
-        metrics_list[0]
-        if metrics_list
-        else Metrics(
-            usage=0,
-            limit=0,
-            provider="twitterapi",
-            extra={"status": "no_keys", "key_id": "none"},
-        )
-    )
+        logger.error(f"Error in TwitterAPI start function: {e}")
+        raise
 
 
 if __name__ == "__main__":

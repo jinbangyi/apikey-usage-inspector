@@ -70,6 +70,9 @@ async def start() -> Metrics:
         response_json = await response.json()
         data = QuickNodeResponse(**response_json.get("data", {}))
         logger.debug(f"QuickNode data: {data}")
+        logger.info(
+            f"QuickNode usage: {data.credits_used} credits used, {data.limit} limit"
+        )
         return Metrics(
             usage=data.credits_used,
             limit=data.limit,
@@ -77,7 +80,7 @@ async def start() -> Metrics:
         )
     else:
         text = await response.text()
-        logger.error(f"Error: {response.status} - {text}")
+        logger.error(f"QuickNode request failed: {response.status} - {text}")
         raise Exception(f"Failed to fetch QuickNode data: {response.status} - {text}")
 
 

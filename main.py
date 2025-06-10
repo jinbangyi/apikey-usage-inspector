@@ -5,9 +5,10 @@ from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
 from src.birdeye.birdeye import start as birdeye_start
 from src.cmc.cmc import start as cmc_start
+from src.openai.openai import start as openai_start
 from src.quicknode.quicknode import start as quicknode_start
-from src.twitterapi.twitterapi import start as get_twitterapi_metrics
 from src.settings import Metrics, settings
+from src.twitterapi.twitterapi import start as get_twitterapi_metrics
 
 registry = CollectorRegistry()
 
@@ -15,28 +16,28 @@ registry = CollectorRegistry()
 apikey_requests_used_total = Gauge(
     "apikey_requests_used_total",
     "Total number of API requests used for the given API key",
-    ["service", "key_type", "usage_calculation"],
+    ["exported_service", "key_type", "usage_calculation"],
     registry=registry,
 )
 
 apikey_requests_remaining_total = Gauge(
     "apikey_requests_remaining_total",
     "Total number of API requests remaining for the given API key",
-    ["service", "key_type", "usage_calculation"],
+    ["exported_service", "key_type", "usage_calculation"],
     registry=registry,
 )
 
 apikey_usage_ratio = Gauge(
     "apikey_usage_ratio",
     "Ratio of used requests to total limit (0.0 to 1.0)",
-    ["service", "key_type", "usage_calculation"],
+    ["exported_service", "key_type", "usage_calculation"],
     registry=registry,
 )
 
 apikey_requests_limit_total = Gauge(
     "apikey_requests_limit_total",
     "Total number of API requests allowed for the given API key",
-    ["service", "key_type", "usage_calculation"],
+    ["exported_service", "key_type", "usage_calculation"],
     registry=registry,
 )
 
@@ -58,7 +59,9 @@ async def generate_metrics():
 
     # Batch fetch metrics from both APIs concurrently
     try:
-        logger.info("📊 Fetching metrics from Birdeye, QuickNode, and CMC APIs...")
+        logger.info(
+            "📊 Fetching metrics from Birdeye, QuickNode, CMC, OpenAI, and TwitterAPI APIs..."
+        )
 
         # Use asyncio.gather to run both API calls concurrently
         pre_tasks = [
@@ -75,9 +78,13 @@ async def generate_metrics():
                 "enabled": settings.cmcSettings.enabled,
             },
             {
+                "function": openai_start,
+                "enabled": settings.openaiSettings.enabled,
+            },
+            {
                 "function": get_twitterapi_metrics,
                 "enabled": settings.twitterAPISettings.enabled,
-            }
+            },
         ]
         future_tasks = [task["function"]() for task in pre_tasks if task["enabled"]]
         tasks: list[Metrics | list[Metrics] | BaseException] = await asyncio.gather(
@@ -94,7 +101,9 @@ async def generate_metrics():
             elif isinstance(task, list):
                 # Handle providers that return List[Metrics] (like TwitterAPI with multiple keys)
                 all_metrics.extend(task)
-                logger.debug(f"✅ Successfully fetched {len(task)} metric(s) from provider")
+                logger.debug(
+                    f"✅ Successfully fetched {len(task)} metric(s) from provider"
+                )
             else:
                 # Handle providers that return single Metrics object
                 all_metrics.append(task)
@@ -107,6 +116,8 @@ async def generate_metrics():
                 usage_calc = "monthly_credits"
             elif metric.provider == "coinmarketcap":
                 usage_calc = "monthly_credits"
+            elif metric.provider == "openai":
+                usage_calc = "monthly_credits"  # OpenAI usage in credits/tokens
             elif metric.provider == "twitterapi":
                 usage_calc = "long_period_package"  # Using a long period package
             else:
@@ -116,20 +127,30 @@ async def generate_metrics():
 
             if usage_calc == "monthly_credits":
                 apikey_requests_used_total.labels(
-                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                    exported_service=metric.provider,
+                    key_type=key_type,
+                    usage_calculation=usage_calc,
                 ).set(metric.usage)
                 apikey_requests_limit_total.labels(
-                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                    exported_service=metric.provider,
+                    key_type=key_type,
+                    usage_calculation=usage_calc,
                 ).set(metric.limit)
                 apikey_usage_ratio.labels(
-                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                    exported_service=metric.provider,
+                    key_type=key_type,
+                    usage_calculation=usage_calc,
                 ).set(round(metric.usage / metric.limit, 4))
                 apikey_requests_remaining_total.labels(
-                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                    exported_service=metric.provider,
+                    key_type=key_type,
+                    usage_calculation=usage_calc,
                 ).set(metric.limit - metric.usage)
             elif usage_calc == "long_period_package":
                 apikey_requests_remaining_total.labels(
-                    service=metric.provider, key_type=key_type, usage_calculation=usage_calc
+                    exported_service=metric.provider,
+                    key_type=key_type,
+                    usage_calculation=usage_calc,
                 ).set(metric.limit - metric.usage)
 
     except Exception as e:
