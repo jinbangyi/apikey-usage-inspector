@@ -322,6 +322,7 @@ class GoogleOAuthClient:
                 await page.goto(target_url, timeout=self.config.timeout, wait_until="domcontentloaded")
                 logger.info(f"Navigated to {target_url}")
                 
+                await asyncio.sleep(5)
                 # Find and click Google OAuth button
                 google_button = await self._find_google_oauth_button(page)
                 if not google_button:

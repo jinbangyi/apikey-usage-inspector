@@ -4,7 +4,8 @@
 - `export PYTHONPATH=$(pwd) && uv run python src/cmc/cmc.py`
 - `export PYTHONPATH=$(pwd) && uv run python src/twitterapi/twitterapi.py`
 - `export PYTHONPATH=$(pwd) && uv run python src/openai/openai.py`
-- [ ] ANTHROPIC
+- `export PYTHONPATH=$(pwd) && uv run python src/anthropic/anthropic.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/coingecko/coingecko.py`
 - [ ] PUMPSCAM
 - [ ] ALVA
 - [ ] TWITTER_CONSUMER

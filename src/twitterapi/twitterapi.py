@@ -76,7 +76,7 @@ async def get_single_api_key_metrics(api_key: str) -> ApiKeyMetrics:
         # )
 
 
-async def start() -> List[Metrics]:
+async def start(retry_count=0) -> List[Metrics]:
     try:
         # Get API keys from settings
         api_keys = settings.twitterAPISettings.api_keys
@@ -92,6 +92,11 @@ async def start() -> List[Metrics]:
 
     except Exception as e:
         logger.error(f"Error in TwitterAPI start function: {e}")
+        if retry_count < 2:
+            logger.warning(f"Retrying TwitterAPI metrics collection ({retry_count + 1}/3)...")
+            return await start(retry_count + 1)
+        else:
+            logger.error("Max retries reached for TwitterAPI metrics collection")
         raise
 
 

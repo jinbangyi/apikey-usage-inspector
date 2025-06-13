@@ -5,6 +5,7 @@ from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
 
 from src.birdeye.birdeye import start as birdeye_start
 from src.cmc.cmc import start as cmc_start
+from src.coingecko.coingecko import start as coingecko_start
 from src.openai.openai import start as openai_start
 from src.quicknode.quicknode import start as quicknode_start
 from src.settings import Metrics, settings
@@ -60,7 +61,7 @@ async def generate_metrics():
     # Batch fetch metrics from both APIs concurrently
     try:
         logger.info(
-            "📊 Fetching metrics from Birdeye, QuickNode, CMC, OpenAI, and TwitterAPI APIs..."
+            "📊 Fetching metrics from Birdeye, QuickNode, CMC, CoinGecko, OpenAI, and TwitterAPI APIs..."
         )
 
         # Use asyncio.gather to run both API calls concurrently
@@ -76,6 +77,10 @@ async def generate_metrics():
             {
                 "function": cmc_start,
                 "enabled": settings.cmcSettings.enabled,
+            },
+            {
+                "function": coingecko_start,
+                "enabled": settings.coingeckoSettings.enabled,
             },
             {
                 "function": openai_start,
@@ -116,8 +121,10 @@ async def generate_metrics():
                 usage_calc = "monthly_credits"
             elif metric.provider == "coinmarketcap":
                 usage_calc = "monthly_credits"
+            elif metric.provider == "coingecko":
+                usage_calc = "monthly_credits"  # CoinGecko uses monthly credits
             elif metric.provider == "openai":
-                usage_calc = "monthly_credits"  # OpenAI usage in credits/tokens
+                usage_calc = "pay_as_you_go" # OpenAI uses pay-as-you-go model
             elif metric.provider == "twitterapi":
                 usage_calc = "long_period_package"  # Using a long period package
             else:
@@ -152,6 +159,12 @@ async def generate_metrics():
                     key_type=key_type,
                     usage_calculation=usage_calc,
                 ).set(metric.limit - metric.usage)
+            elif usage_calc == "pay_as_you_go":
+                apikey_requests_used_total.labels(
+                    exported_service=metric.provider,
+                    key_type=key_type,
+                    usage_calculation=usage_calc,
+                ).set(metric.usage)
 
     except Exception as e:
         logger.error(f"❌ Unexpected error during metrics generation: {e}")

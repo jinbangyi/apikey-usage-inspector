@@ -3,10 +3,12 @@ from typing import Optional
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from src.anthropic import Settings as AnthropicSettings
 from src.birdeye import Settings as BirdeyeSettings
 from src.cmc import Settings as CMCSettings
 from src.cmc.captcha import Settings as CMCCaptchaSettings
 from src.cmc.cookie import Settings as CMCCookieSettings
+from src.coingecko import Settings as CoinGeckoSettings
 from src.openai import Settings as OpenAISettings
 from src.quicknode import Settings as QuickNodeSettings
 from src.twitterapi import Settings as TwitterAPISettings
@@ -42,7 +44,9 @@ class CommonSettings(BaseSettings):
     cmcSettings: CMCSettings = CMCSettings()
     cmcCookieSettings: CMCCookieSettings = CMCCookieSettings()
     cmcCaptchaSettings: CMCCaptchaSettings = CMCCaptchaSettings()
+    coingeckoSettings: CoinGeckoSettings = CoinGeckoSettings()
     openaiSettings: OpenAISettings = OpenAISettings()
+    anthropicSettings: AnthropicSettings = AnthropicSettings()
     twitterAPISettings: TwitterAPISettings = TwitterAPISettings()
     twitterAPIOauthSettings: TwitterAPIOauthSettings = TwitterAPIOauthSettings()
 
