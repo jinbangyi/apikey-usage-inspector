@@ -6,8 +6,12 @@ from pydantic_settings import BaseSettings
 
 class _GeneralApiKeySettings(BaseSettings):
     enabled: bool = False
+    retry_attempts: int = 2
+    retry_delay: int = 60 # 60 seconds
+
     apikey: Union[str, List[str]] = Field(default="YOUR_API_KEY")
     admin_apikey: Union[str, List[str]] = Field(default="YOUR_API_KEY")
+    console_apikey: Union[str, List[str]] = Field(default="YOUR_API_KEY")
 
     def validate_apikeys(self, apikeys: Union[str, List[str]]):
         """Validate that the API keys are not the default placeholder."""
@@ -54,3 +58,10 @@ class GeneralAdminApiKeySettings(_GeneralApiKeySettings):
         super().__init__(**data)
         if self.enabled:
             self.validate_apikeys(self.admin_apikey)
+
+
+class GeneralConsoleApiKeySettings(_GeneralApiKeySettings):
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.enabled:
+            self.validate_apikeys(self.console_apikey)

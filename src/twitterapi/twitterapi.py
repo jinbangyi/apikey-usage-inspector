@@ -2,6 +2,7 @@ from typing import List, Optional
 
 from loguru import logger
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from src.settings import Metrics, settings
 from src.utils.apikey import ApiKeyMetrics, MultiApiKeyProcessor
@@ -76,7 +77,8 @@ async def get_single_api_key_metrics(api_key: str) -> ApiKeyMetrics:
         # )
 
 
-async def start(retry_count=0) -> List[Metrics]:
+@retry(stop=stop_after_attempt(settings.twitterAPISettings.retry_attempts), wait=wait_fixed(settings.twitterAPISettings.retry_delay))
+async def start() -> List[Metrics]:
     try:
         # Get API keys from settings
         api_keys = settings.twitterAPISettings.api_keys
@@ -92,11 +94,6 @@ async def start(retry_count=0) -> List[Metrics]:
 
     except Exception as e:
         logger.error(f"Error in TwitterAPI start function: {e}")
-        if retry_count < 2:
-            logger.warning(f"Retrying TwitterAPI metrics collection ({retry_count + 1}/3)...")
-            return await start(retry_count + 1)
-        else:
-            logger.error("Max retries reached for TwitterAPI metrics collection")
         raise
 
 

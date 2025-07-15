@@ -1,8 +1,9 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import SettingsConfigDict
+
+from src.typing import _GeneralApiKeySettings
 
 
-class Settings(BaseSettings):
-    enabled: bool = True
+class Settings(_GeneralApiKeySettings):
     email: str = "YOUR_EMAIL"
     password: str = "YOUR_PASSWORD"
 
@@ -19,6 +20,4 @@ class Settings(BaseSettings):
             and self.email == "YOUR_EMAIL"
             and self.password == "YOUR_PASSWORD"
         ):
-            raise ValueError(
-                "The default email and password is not valid."
-            )
+            raise ValueError("The default email and password is not valid.")

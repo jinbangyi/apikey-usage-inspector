@@ -3,6 +3,7 @@ from typing import Optional
 
 from loguru import logger
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from src.settings import Metrics, settings
 from src.utils.requests_async import async_get
@@ -45,6 +46,7 @@ class QuickNodeResponse(BaseModel):
     end_time: int
 
 
+@retry(stop=stop_after_attempt(settings.quickNodeSettings.retry_attempts), wait=wait_fixed(settings.quickNodeSettings.retry_delay))
 async def start() -> Metrics:
     # Replace with your actual QuickNode URL
     quicknode_url = "https://api.quicknode.com/v0/usage/rpc"

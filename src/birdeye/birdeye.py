@@ -3,6 +3,7 @@ from typing import Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from src.settings import Metrics, settings
 from src.utils.requests_async import async_get, async_post
@@ -143,6 +144,7 @@ async def get_birdeye_monthly_max_usage(token: str) -> AccountInfoResponse:
         raise Exception(f"Error: {response.status} - {text}")
 
 
+@retry(stop=stop_after_attempt(settings.birdeyeSettings.retry_attempts), wait=wait_fixed(settings.birdeyeSettings.retry_delay))
 async def start() -> Metrics:
     token = await birdeye_login(
         settings.birdeyeSettings.email,

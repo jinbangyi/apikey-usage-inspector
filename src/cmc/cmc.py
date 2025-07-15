@@ -3,6 +3,8 @@ from typing import Optional
 
 from loguru import logger
 from pydantic import BaseModel
+from tenacity import retry
+from tenacity import stop_after_attempt, wait_fixed
 
 from src.utils.apikey import ApiKeyMetrics, MultiApiKeyProcessor
 from src.settings import Metrics, settings
@@ -116,6 +118,7 @@ async def get_single_api_key_metrics(api_key: str) -> ApiKeyMetrics:
         # )
 
 
+@retry(stop=stop_after_attempt(settings.cmcSettings.retry_attempts), wait=wait_fixed(settings.cmcSettings.retry_delay))
 async def start() -> list[Metrics]:
     """Main function to get CMC usage metrics"""
     try:

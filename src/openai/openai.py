@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from src.settings import Metrics, settings
 from src.utils.apikey import ApiKeyMetrics, MultiApiKeyProcessor
@@ -401,7 +402,8 @@ class OpenAiUsage:
         return key_id_mapping
 
 
-async def start(retry_count=0) -> List[Metrics]:
+@retry(stop=stop_after_attempt(settings.openaiSettings.retry_attempts), wait=wait_fixed(settings.openaiSettings.retry_delay))
+async def start() -> List[Metrics]:
     """Main entry point for OpenAI usage collection"""
     if not settings.openaiSettings.enabled:
         logger.info("🤖 OpenAI monitoring is disabled")
@@ -473,15 +475,8 @@ async def start(retry_count=0) -> List[Metrics]:
         return all_results
 
     except Exception as e:
-        if retry_count < 2:
-            logger.warning(
-                f"Error in OpenAI start function, retrying... ({retry_count + 1}/2)"
-            )
-            await asyncio.sleep(2)
-            return await start(retry_count + 1)
-        else:
-            logger.error(f"Error in OpenAI start function: {e}")
-            raise e
+        logger.error(f"Error in OpenAI start function: {e}")
+        raise e
 
 
 if __name__ == "__main__":

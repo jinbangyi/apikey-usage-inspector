@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any, Dict, List
 
 from loguru import logger
 from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
@@ -65,7 +66,7 @@ async def generate_metrics():
         )
 
         # Use asyncio.gather to run both API calls concurrently
-        pre_tasks = [
+        pre_tasks: List[Dict[str, Any]] = [
             {
                 "function": birdeye_start,
                 "enabled": settings.birdeyeSettings.enabled,
@@ -91,7 +92,8 @@ async def generate_metrics():
                 "enabled": settings.twitterAPISettings.enabled,
             },
         ]
-        future_tasks = [task["function"]() for task in pre_tasks if task["enabled"]]
+        enabled_tasks = [task for task in pre_tasks if task["enabled"]]
+        future_tasks = [task["function"]() for task in enabled_tasks]
         tasks: list[Metrics | list[Metrics] | BaseException] = await asyncio.gather(
             *future_tasks, return_exceptions=True
         )
@@ -99,9 +101,9 @@ async def generate_metrics():
 
         # Flatten the results - some providers return List[Metrics], others return Metrics
         all_metrics: list[Metrics] = []
-        for task in tasks:
+        for i, task in enumerate(tasks):
             if isinstance(task, BaseException):
-                logger.error(f"❌ Error fetching data: {task}")
+                logger.error(f"❌ Error fetching task: {enabled_tasks[i]['function'].__name__}, error: {task}")
                 continue
             elif isinstance(task, list):
                 # Handle providers that return List[Metrics] (like TwitterAPI with multiple keys)
@@ -147,7 +149,7 @@ async def generate_metrics():
                     exported_service=metric.provider,
                     key_type=key_type,
                     usage_calculation=usage_calc,
-                ).set(round(metric.usage / metric.limit, 4))
+                ).set(0 if metric.limit == 0 else round(metric.usage / metric.limit, 4))
                 apikey_requests_remaining_total.labels(
                     exported_service=metric.provider,
                     key_type=key_type,
