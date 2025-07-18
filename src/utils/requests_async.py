@@ -1,3 +1,4 @@
+import asyncio
 from urllib.parse import urlencode, urlparse, urlunparse
 
 import aiohttp
@@ -92,7 +93,9 @@ async def async_request(method: str, url: str, **kwargs) -> aiohttp.ClientRespon
 
     # Make regular request if no resolution needed
     async with aiohttp.ClientSession() as session:
-        return await session.request(method, url, **kwargs)
+        response = await session.request(method, url, **kwargs)
+        await asyncio.sleep(0.5)
+        return response
 
 
 async def async_get(url: str, params=None, **kwargs) -> aiohttp.ClientResponse:

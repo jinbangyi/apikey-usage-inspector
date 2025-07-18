@@ -1,16 +1,15 @@
-from pydantic_settings import SettingsConfigDict
-
-from src.typing import _GeneralApiKeySettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(_GeneralApiKeySettings):
+class Settings(BaseSettings):
+    enabled: bool = False
     email: str = "YOUR_EMAIL"
     password: str = "YOUR_PASSWORD"
 
     model_config = SettingsConfigDict(
         extra="ignore",
         env_file=".env",
-        env_prefix="BIRDEYE_",
+        env_prefix="CMC_CAPTCHA_",
     )
 
     def __init__(self, **data):
@@ -20,4 +19,4 @@ class Settings(_GeneralApiKeySettings):
             and self.email == "YOUR_EMAIL"
             and self.password == "YOUR_PASSWORD"
         ):
-            raise ValueError("The default email and password is not valid.")
+            raise ValueError("The default email or password is not valid.")

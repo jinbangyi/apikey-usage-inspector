@@ -5,5 +5,5 @@ from src.typing import GeneralApiKeySettings
 
 class Settings(GeneralApiKeySettings):
     model_config = SettingsConfigDict(
-        env_prefix="CMC_", env_file=".env", extra="ignore"
+        env_prefix="TWITTERAPI_", env_file=".env", extra="ignore"
     )

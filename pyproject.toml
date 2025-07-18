@@ -1,14 +1,34 @@
 [project]
 name = "apikey-usage-inspector"
-version = "0.1.0"
+version = "0.0.1"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "aiohttp>=3.12.8",
     "loguru>=0.7.3",
+    "playwright>=1.52.0",
     "prometheus-client>=0.22.1",
     "pydantic>=2.11.5",
     "pydantic-settings>=2.9.1",
+    "tenacity>=9.1.2",
+]
+
+[project.scripts]
+build-and-push = "scripts.build:main"
+
+[tool.uv]
+dev-dependencies = [
+    "docker>=7.1.0",
+    "tomli>=2.0.0; python_version<'3.11'",
+    "python-dotenv>=1.0.0",
     "requests>=2.32.3",
 ]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src", "scripts"]

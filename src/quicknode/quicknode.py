@@ -3,6 +3,7 @@ from typing import Optional
 
 from loguru import logger
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from src.settings import Metrics, settings
 from src.utils.requests_async import async_get
@@ -40,17 +41,18 @@ class QuickNodeResponse(BaseModel):
     credits_used: int
     credits_remaining: int
     limit: int
-    overages: Optional[int]
+    overages: Optional[int] = None
     start_time: int
     end_time: int
 
 
+@retry(stop=stop_after_attempt(settings.quickNodeSettings.retry_attempts), wait=wait_fixed(settings.quickNodeSettings.retry_delay))
 async def start() -> Metrics:
     # Replace with your actual QuickNode URL
     quicknode_url = "https://api.quicknode.com/v0/usage/rpc"
     # read from .env file
     # Ensure you have the QuickNode API key set in your environment or .env file
-    quicknode_console_apikey = settings.quickNodeSettings.quicknode_console_apikey
+    quicknode_console_apikey = settings.quickNodeSettings.console_apikey
 
     # Example request to get the latest block number
     response = await async_get(
@@ -70,6 +72,9 @@ async def start() -> Metrics:
         response_json = await response.json()
         data = QuickNodeResponse(**response_json.get("data", {}))
         logger.debug(f"QuickNode data: {data}")
+        logger.info(
+            f"QuickNode usage: {data.credits_used} credits used, {data.limit} limit"
+        )
         return Metrics(
             usage=data.credits_used,
             limit=data.limit,
@@ -77,7 +82,7 @@ async def start() -> Metrics:
         )
     else:
         text = await response.text()
-        logger.error(f"Error: {response.status} - {text}")
+        logger.error(f"QuickNode request failed: {response.status} - {text}")
         raise Exception(f"Failed to fetch QuickNode data: {response.status} - {text}")
 
 

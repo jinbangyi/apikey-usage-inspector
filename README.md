@@ -2,8 +2,10 @@
 - `export PYTHONPATH=$(pwd) && uv run python src/quicknode/quicknode.py`
 - `export PYTHONPATH=$(pwd) && uv run python src/birdeye/birdeye.py`
 - `export PYTHONPATH=$(pwd) && uv run python src/cmc/cmc.py`
-- [ ] openai
-- [ ] ANTHROPIC
+- `export PYTHONPATH=$(pwd) && uv run python src/twitterapi/twitterapi.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/openai/openai.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/anthropic/anthropic.py`
+- `export PYTHONPATH=$(pwd) && uv run python src/coingecko/coingecko.py`
 - [ ] PUMPSCAM
 - [ ] ALVA
 - [ ] TWITTER_CONSUMER
