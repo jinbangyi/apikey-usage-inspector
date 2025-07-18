@@ -141,7 +141,7 @@ class OpenAiUsage:
                 )
 
         except Exception as e:
-            logger.error(f"Error getting OpenAI {endpoint} usage: {e}")
+            logger.warning(f"Error getting OpenAI {endpoint} usage: {e}")
             raise
 
     async def get_costs_data(self) -> CostResponse:
@@ -205,6 +205,7 @@ class OpenAiUsage:
         )
         return input_tokens
 
+    @retry(stop=stop_after_attempt(settings.openaiSettings.retry_attempts), wait=wait_fixed(settings.openaiSettings.retry_delay))
     async def get_single_api_key_metrics(self, api_key: str) -> ApiKeyMetrics:
         """Get metrics for a single OpenAI API key using the organization usage API"""
         key_id = (
@@ -231,51 +232,51 @@ class OpenAiUsage:
                 usage_details["completions"] = input_tokens
                 total_tokens += input_tokens
             except Exception as e:
-                logger.debug(f"Could not get completions usage: {e}")
+                logger.warning(f"Could not get completions usage: {e}")
                 raise e
 
             # Try to get embeddings usage
-            try:
-                input_tokens = await self.get_input_tokens("embeddings", api_key_ids)
-                usage_details["embeddings"] = input_tokens
-                total_tokens += input_tokens
-            except Exception as e:
-                logger.debug(f"Could not get embeddings usage: {e}")
+            # try:
+            #     input_tokens = await self.get_input_tokens("embeddings", api_key_ids)
+            #     usage_details["embeddings"] = input_tokens
+            #     total_tokens += input_tokens
+            # except Exception as e:
+            #     logger.debug(f"Could not get embeddings usage: {e}")
 
             # Try to get moderations usage
-            try:
-                input_tokens = await self.get_input_tokens("moderations", api_key_ids)
-                usage_details["moderations"] = input_tokens
-                total_tokens += input_tokens
-            except Exception as e:
-                logger.debug(f"Could not get moderations usage: {e}")
+            # try:
+            #     input_tokens = await self.get_input_tokens("moderations", api_key_ids)
+            #     usage_details["moderations"] = input_tokens
+            #     total_tokens += input_tokens
+            # except Exception as e:
+            #     logger.debug(f"Could not get moderations usage: {e}")
 
             # Try to get images usage
-            try:
-                images = await self.get_input_tokens(
-                    "images", api_key_ids, count_field="images"
-                )
-                usage_details["images"] = images
-            except Exception as e:
-                logger.debug(f"Could not get images usage: {e}")
+            # try:
+            #     images = await self.get_input_tokens(
+            #         "images", api_key_ids, count_field="images"
+            #     )
+            #     usage_details["images"] = images
+            # except Exception as e:
+            #     logger.debug(f"Could not get images usage: {e}")
 
             # Try to get audio speeches usage
-            try:
-                characters = await self.get_input_tokens(
-                    "audio_speeches", api_key_ids, count_field="characters"
-                )
-                usage_details["audio_speeches"] = characters
-            except Exception as e:
-                logger.debug(f"Could not get audio speeches usage: {e}")
+            # try:
+            #     characters = await self.get_input_tokens(
+            #         "audio_speeches", api_key_ids, count_field="characters"
+            #     )
+            #     usage_details["audio_speeches"] = characters
+            # except Exception as e:
+            #     logger.debug(f"Could not get audio speeches usage: {e}")
 
             # Try to get audio transcriptions usage
-            try:
-                seconds = await self.get_input_tokens(
-                    "audio_transcriptions", api_key_ids, count_field="seconds"
-                )
-                usage_details["audio_transcriptions"] = seconds
-            except Exception as e:
-                logger.debug(f"Could not get audio transcriptions usage: {e}")
+            # try:
+            #     seconds = await self.get_input_tokens(
+            #         "audio_transcriptions", api_key_ids, count_field="seconds"
+            #     )
+            #     usage_details["audio_transcriptions"] = seconds
+            # except Exception as e:
+            #     logger.debug(f"Could not get audio transcriptions usage: {e}")
 
             return ApiKeyMetrics(
                 key_id=key_id,
@@ -294,7 +295,7 @@ class OpenAiUsage:
             )
 
         except Exception as e:
-            logger.error(f"Error getting metrics for OpenAI API key {key_id}: {e}")
+            logger.warning(f"Error getting metrics for OpenAI API key {key_id}: {e}")
             raise e
 
     async def get_projects_api_keys_metadata(self):
@@ -328,6 +329,10 @@ class OpenAiUsage:
 
                             self._api_key_id_cache[key_suffix] = key_info.id
 
+                        logger.debug(
+                            f"Found {len(project_keys.data)} API keys for project {project_id}"
+                        )
+
                     except Exception as e:
                         raise Exception(
                             f"Failed to get API keys for project {project_id}: {e}"
@@ -345,6 +350,7 @@ class OpenAiUsage:
             f"OpenAI project API keys metadata loaded, {self._api_key_id_cache} keys cached"
         )
 
+    @retry(stop=stop_after_attempt(settings.openaiSettings.retry_attempts), wait=wait_fixed(settings.openaiSettings.retry_delay))
     async def get_project_api_keys(self, project_id: str) -> ProjectApiKeysResponse:
         """Get list of API keys for a specific project"""
         url = f"{self.base_url}/organization/projects/{project_id}/api_keys"
@@ -352,7 +358,6 @@ class OpenAiUsage:
         headers = {
             "Authorization": f"Bearer {self.admin_api_key}",
             "Content-Type": "application/json",
-            "User-Agent": "apikey-usage-inspector/1.0",
         }
 
         try:
@@ -429,6 +434,11 @@ async def start() -> List[Metrics]:
             logger.info(f"Processing {len(api_keys)} OpenAI API keys for usage")
 
             await usage.get_projects_api_keys_metadata()
+            not_inspect_apikeys = set(usage._api_key_id_cache.keys()) - set([key[-4:] for key in api_keys])
+            if not_inspect_apikeys:
+                logger.warning(
+                    f"Some API keys do not have metadata: {not_inspect_apikeys}..."
+                )
 
             # Use the multi-API key processor for parallel processing
             processor = MultiApiKeyProcessor(
@@ -455,6 +465,12 @@ async def start() -> List[Metrics]:
 
             # calculate the percent usage of the total cost
             for metric in api_key_metrics:
+                if metric.extra and not metric.extra.get("success", False):
+                    logger.warning(
+                        f"Skipping API key {metric.key_masked} due to previous errors"
+                    )
+                    continue
+
                 all_results.append(
                     Metrics(
                         usage=int(total_cost_usd * (metric.usage / total_usage)),

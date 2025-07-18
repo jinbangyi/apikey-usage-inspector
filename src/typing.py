@@ -6,8 +6,8 @@ from pydantic_settings import BaseSettings
 
 class _GeneralApiKeySettings(BaseSettings):
     enabled: bool = False
-    retry_attempts: int = 2
-    retry_delay: int = 60 # 60 seconds
+    retry_attempts: int = 3
+    retry_delay: int = 120 # 120 seconds
 
     apikey: Union[str, List[str]] = Field(default="YOUR_API_KEY")
     admin_apikey: Union[str, List[str]] = Field(default="YOUR_API_KEY")

@@ -132,7 +132,11 @@ async def start() -> list[Metrics]:
         processor = MultiApiKeyProcessor("coinmarketcap", get_single_api_key_metrics)
 
         # Process all API keys and return metrics
-        return await processor.process_multiple_keys(api_keys)
+        metrics = await processor.process_multiple_keys(api_keys)
+        metrics = [
+            m for m in metrics if m.extra and m.extra.get("success", False)
+        ]
+        return metrics
 
     except Exception as e:
         logger.error(f"Error in CMC start function: {e}")
