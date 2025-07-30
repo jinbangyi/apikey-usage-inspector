@@ -403,7 +403,6 @@ class OpenAiUsage:
                 logger.error(f"Error mapping API key {api_key[:10]}...: {e}")
                 continue
 
-        logger.info(f"Successfully mapped {len(key_id_mapping)} API keys to IDs")
         return key_id_mapping
 
 

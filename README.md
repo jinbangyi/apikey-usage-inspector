@@ -10,5 +10,4 @@
 - [ ] ALVA
 - [ ] TWITTER_CONSUMER
 - [ ] SERP
-- [ ] BIRDEYE
 - [ ] PUMP_NEWS

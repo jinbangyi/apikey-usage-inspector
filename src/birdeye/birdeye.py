@@ -42,12 +42,13 @@ class PlanInfo(BaseModel):
 
 
 class AccountInfo(BaseModel):
-    id: str
+    id: Optional[str] = None
     stripeCustomerId: str
     name: str
     planInfo: PlanInfo
     subscription: Subscription
     isSuspended: bool
+    suspensionReasons: Optional[list[str]] = None
 
 
 class AccountInfoResponse(BaseModel):
