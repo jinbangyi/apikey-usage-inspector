@@ -13,6 +13,7 @@ class TwitterAPIUsageResponse(BaseModel):
     """Response model for TwitterAPI usage information"""
 
     recharge_credits: int
+    total_bonus_credits: int
 
 
 class TwitterAPIErrorResponse(BaseModel):
@@ -50,8 +51,9 @@ async def get_single_api_key_metrics(api_key: str) -> ApiKeyMetrics:
         # Get TwitterAPI usage information
         usage_response = await get_twitterapi_usage(api_key)
 
-        remaining_credits = usage_response.recharge_credits
-        logger.info(f"TwitterAPI key {key_id}: {remaining_credits} remaining credits")
+        total_bonus_credits = usage_response.total_bonus_credits
+        remaining_credits = usage_response.recharge_credits + total_bonus_credits
+        logger.info(f"TwitterAPI key {key_id}: {remaining_credits} remaining credits, {total_bonus_credits} total bonus credits")
 
         return ApiKeyMetrics(
             key_id=key_id,
